@@ -1,88 +1,90 @@
-import re
+import Lex
 
-#command type
-A_COMMAND = 0
-C_COMMAND = 1
-L_COMMAND = 2
+class Parser(object):
+	A_COMMAND = 0
+	C_COMMAND = 1
+	L_COMMAND = 2
 
-A_COMMAND_PATTERN = re.compile(r'@([0-9a-zA-Z_\.\$:]+)')
-C_COMMAND_PATTERN = re.compile(r'(?:(A?M?D?)=)?([^;]+)(?:;(.+))?')
-L_COMMAND_PATTERN = re.compile(r'\(([0-9a-zA-Z_\.\$:]*)\)')
+	def __init__(self, file):
+		self.lex = Lex.Lex(file)
+		self._init_cmd_info()
 
-class HackParser():
-	def __init__(self, file_path):
-		self.current_command = None
-		self.f_hack = open(file_path)
+	def _init_cmd_info(self):
+		self._cmd_type = -1
+		self._symbol = ''
+		self._dest = ''
+		self._comp = ''
+		self._jmp = ''
 
-	def __enter__(self):
-		return self
-
-	def __exit__(self):
-		self.f_hack.close()
+	def has_more_commands(self) ->bool:
+		return self.lex.has_more_commands()
 
 	def advance(self):
-		while True:
-			line = self.f_hack.readline()
-			if not line:
-				self.current_command = None
-				break
-			line_trimmend = line.strip().replace(' ','')
-			comment_i = line_trimmend.find('//')
-			if comment_i != -1:
-				line_trimmend = line_trimmend[:comment_i]
+		self._init_cmd_info()
 
-			if line_trimmend != '':
-				self.current_command = line_trimmend
-				break
+		self.lex.next_command()
+		tok, val = self.lex.cur_token
 
-		return self.current_command
-
-	def commnadType(self) -> int:
-		if self.current_command[0] == "@":
-			return A_COMMAND
-		elif self.current_command[0] == "(":
-			return L_COMMAND
+		if tok == Lex.OP and val == '@':
+			self._a_command()
+		elif tok == Lex.OP and val == '(':
+			self._l_command()
 		else:
-			return C_COMMAND
+			self._c_command(tok, val)
+
+	def command_type(self):
+		return self._cmd_type
 
 	def symbol(self):
-		cmd_type = self.commnadType()
-		if cmd_type == A_COMMAND:
-            m = A_COMMAND_PATTERN.match(self.current_command)
-            if not m:
-                raise Exception('Parsing symbol failed')
-            return m.group(1)
+		return self._symbol
 
-        elif cmd_type == L_COMMAND:
-            m = L_COMMAND_PATTERN.match(self.current_command)
-            if not m:
-                raise Exception('Parsing symbol failed')
-            return m.group(1)
-        else:
-            raise Exception('Cunrrent command is not A_COMMAND or L_COMMAND')
+	def dest(self):
+		return self._dest
 
-    def dest(self) -> str:
-    	cmd_type = self.commnadType()
-    	if cmd_type == C_COMMAND:
-    		m = C_COMMAND_PATTERN.match(self.current_command)
-            return m.group(1)
-        else:
-            raise Exception('Cunrrent command is not C_COMMAND')
+	def comp(self):
+		return self._comp
 
-    def comp(self) -> str:
-        cmd_type = self.command_type()
-        if cmd_type == C_COMMAND:
-            m = C_COMMAND_PATTERN.match(self.current_command)
-            return m.group(2)
-        else:
-            raise Exception('Cunrrent command is not C_COMMAND')
+	def jmp(self):
+		return self._jmp
 
-    def jump(self) -> str:
-        cmd_type = self.command_type()
-        if cmd_type == C_COMMAND:
-            m = C_COMMAND_PATTERN.match(self.current_command)
-            return m.group(3)
-        else:
-            raise Exception('Cunrrent command is not C_COMMAND')
+	def _a_command(self):
+		self._cmd_type = Parser.A_COMMAND
+		tok_type, self._symbol = self.lex.next_token()
 
+	def _l_command(self):
+		self._cmd_type = Parser.L_COMMAND
+		tok_type, self._symbol = self.lex.next_token()
 
+	def _c_command(self, tok1, val1):
+		self._cmd_type = Parser.C_COMMAND
+		comp_tok, comp_val = self._get_dest(tok1, val1)
+		self._get_comp(comp_tok, comp_val)
+		self._get_jump()
+
+	def _get_dest(self, tok1, val1):
+		tok2, val2 = self.lex.peek_token()
+		if tok2 == Lex.OP and val2 == '=':
+			self.lex.next_token()
+			self._dest = val1
+			comp_tok, comp_val = self.lex.next_token()
+		else:
+			comp_tok, comp_val = tok1, val1
+		return (comp_tok, comp_val)
+
+	def _get_comp(self, tok, val):
+		if tok == Lex.OP and (val == '-' or val == '!'):
+			tok2, val2 = self.lex.next_token()
+			self._comp = val+val2
+		elif tok == Lex.NUM or tok == Lex.ID:
+			self._comp = val
+			tok2, val2 = self.lex.peek_token()
+			if tok2 == Lex.OP and val2 != ';':
+				self.lex.next_token()
+				tok3, val3 = self.lex.next_token()
+				self._comp += val2+val3
+
+	def _get_jump(self):
+		tok, val = self.lex.next_token()
+		if tok == Lex.OP and val == ';':
+			jump_tok, jump_val = self.lex.next_token()
+			self._jmp = jump_val
