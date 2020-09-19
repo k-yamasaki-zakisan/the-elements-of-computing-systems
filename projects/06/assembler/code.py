@@ -3,7 +3,7 @@ class Code(object):
 		pass
 
 	def gen_a(self, addr):
-		return '0' + self._bits(addr).zfill(15);
+		return '0' + self._bits(addr).zfill(15)
 
 	def gen_c(self, dest, comp, jump):
 		return '111' + self.comp(comp) + self.dest(dest) + self.jump(jump)
@@ -29,7 +29,7 @@ class Code(object):
 		return self._comp_codes[c]
 
 	_jump_codes = ['', 'JGT', 'JEQ', 'JGE', 'JLT', 'JNE', 'JLE', 'JMP']
-	def jump(self, j):
+	def jump(self, j:str):
 		return self._bits(self._jump_codes.index(j)).zfill(3)
 
 	def _bits(self, n:str) ->str:
