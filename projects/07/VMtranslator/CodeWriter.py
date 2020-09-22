@@ -6,6 +6,9 @@ class CodeWriter():
         self._out_file = open(write_file_path, 'w')
         self.label_num  = 0
         self._current_translated_file_name = ''
+    
+    def __enter__(self):
+        return self
 
     def __exit__(self, exception_type, exception_value, traceback):
         self._out_file.close()
@@ -18,8 +21,7 @@ class CodeWriter():
         elif command in ['eq', 'gt', 'lt']:
             self.write_comp_operation(command)
     
-    def write_push_pop(self,command:str,seg:str,index):
-        index = int(index)
+    def write_push_pop(self,command:str,seg:str,index:int):
         if command == C_PUSH:
             if seg == 'contant':
                 self.write_codes([
@@ -33,7 +35,7 @@ class CodeWriter():
                 self.write_push_from_static_segment(seg, index)
             if seg == 'static':
                 self.write_codes([
-                    '@%s.%d' % (self._current_translated_file_name, index),
+                    "@%s.%d"+self._current_translated_file_name+str(index),
                 ])
                 self.write_code('D=M')
                 self.write_push_from_d_register()
@@ -47,7 +49,7 @@ class CodeWriter():
                     self.write_pop_to_m_register()
                     self.write_codes([
                         'D=M',
-                        '@%s.%d' % (self._current_translated_file_name, index)
+                        '@%s.%d'+self._current_translated_file_name+str(index),
                     ])
                     self.write_code('M=D')
     

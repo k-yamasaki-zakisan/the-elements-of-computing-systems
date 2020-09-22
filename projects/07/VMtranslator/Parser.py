@@ -2,8 +2,11 @@ from VMContents import *
 
 class Parser():
 	def __init__(self,read_file_path:str):
-		self._current_command = None
+		self.current_command = None
 		self._f_vm = open(read_file_path, 'r')
+	
+	def __enter__(self):
+		return self
 	
 	def __exit__(self, exception_type, exception_value, traceback):
 		self._f_vm.close()
@@ -12,8 +15,8 @@ class Parser():
 		while True:
 			line = self._f_vm.readline()
 			if not line:
-				self._current_command = None
-				return self._current_command
+				self.current_command = None
+				return self.current_command
 
 			line = line.strip()
 
@@ -23,25 +26,25 @@ class Parser():
 				line = line[:command_i]
 
 			if line != '':
-				self._current_command = line
-				return self._current_command
+				self.current_command = line.split()
+				return self.current_command
 
 	def command_type(self):
-		if self._current_command[0] == 'push':
+		if self.current_command[0] == 'push':
 			return C_PUSH
-		elif self._current_command[0] == 'pop':
+		elif self.current_command[0] == 'pop':
 			return C_POP
-		elif self._current_command[0] == 'label':
+		elif self.current_command[0] == 'label':
 			return C_LABEL
-		elif self._current_command[0] == 'goto':
+		elif self.current_command[0] == 'goto':
 			return C_GOTO
-		elif self._current_command[0] == 'if':
+		elif self.current_command[0] == 'if':
 			return C_IF
-		elif self._current_command[0] == 'function':
+		elif self.current_command[0] == 'function':
 			return C_FUNCTION
-		elif self._current_command[0] == 'return':
+		elif self.current_command[0] == 'return':
 			return C_RETURN
-		elif self._current_command[0] == 'call':
+		elif self.current_command[0] == 'call':
 			return C_CALL
 		else:
 			return C_ARITHMETIC
@@ -50,13 +53,13 @@ class Parser():
 		if self.command_type() == C_RETURN:
 			pass
 		elif self.command_type() == C_ARITHMETIC:
-			return self._current_command[0]
+			return self.current_command[0]
 		else:
-			return self._current_command[1]
+			return self.current_command[1]
 
 	def arg2(self):
 		if self.command_type() in [C_PUSH, C_POP, C_FUNCTION, C_CALL]:
-			return self._current_command[1]
+			return self.current_command[2]
 
 
 
